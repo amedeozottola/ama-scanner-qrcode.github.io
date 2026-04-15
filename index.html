@@ -1,1 +1,298 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      background: #f5f5f5;
+    }
 
+    h1 { color: #626; }
+
+    #qrcodeInput {
+      padding: 10px;
+      font-size: 16px;
+      width: 32ch;
+      margin: 8px 0;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+
+    button { padding: 10px 20px; font-size: 16px; cursor: pointer; border: none; border-radius: 6px; }
+    .scan-btn   { background: #3b82f6; color: #fff; padding: 10px; font-size: 14px; margin: 4px 0; border-radius: 4px; }
+    .submit-btn { background: #10b981; color: #fff; width: 100%; margin-top: 12px; }
+
+    #loading { display: none; margin-top: 20px; color: #888; }
+
+    #risultato {
+      margin-top: 30px;
+      padding: 20px;
+      border-radius: 12px;
+      font-size: 24px;
+      font-weight: bold;
+      display: none;
+      width: 100%;
+      max-width: 400px;
+      box-sizing: border-box;
+    }
+    #risultato.ok      { background: #d4edda; color: #155724; border: 2px solid #28a745; }
+    #risultato.warning { background: #fff3cd; color: #856404; border: 2px solid #ffc107; }
+    #risultato.ko      { background: #f8d7da; color: #721c24; border: 2px solid #dc3545; }
+
+    /* ===================== */
+    /* OVERLAY SCANNER       */
+    /* ===================== */
+    #scanner-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: #111;
+      z-index: 9999;
+      flex-direction: column;
+    }
+    #scanner-overlay.attivo { display: flex; }
+
+    .overlay-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      background: #222;
+    }
+    .overlay-top h2 { color: #fff; font-size: 16px; margin: 0; }
+    .btn-chiudi-overlay {
+      background: #e33;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    #qr-reader { width: 100%; flex: 1; }
+    #qr-reader video { width: 100% !important; }
+    #qr-reader__dashboard button {
+      background: #3b82f6 !important;
+      color: #fff !important;
+      border: none !important;
+      border-radius: 8px !important;
+      padding: 10px 20px !important;
+      cursor: pointer !important;
+    }
+
+    #scan-result-msg {
+      padding: 16px;
+      text-align: center;
+      font-size: 18px;
+      font-weight: 700;
+      color: #34d399;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Le Mille e Una Notte 2026</h1>
+  <h2>Verifica Biglietto</h2>
+
+  <input type="file" id="qr-input-file" accept="image/*" capture="environment" style="display:none;">
+
+  <button type="button" class="submit-btn" onclick="document.getElementById('qr-input-file').click()">
+    SCATTA FOTO E VERIFICA
+  </button>
+  
+  <div id="qr-reader" style="display:none;"></div>
+  <div id="loading" style="display:none;">⏳ Lettura in corso...</div>
+  <div id="risultato"></div>
+  
+  <form id="myForm" onsubmit="event.preventDefault();">
+      <input type="hidden" id="qrcodeInput" name="qrcode">
+  </form>
+
+  <!-- ===================== -->
+  <!-- OVERLAY SCANNER       -->
+  <!-- ===================== -->
+  <div id="scanner-overlay">
+    <div class="overlay-top">
+      <h2>Scansiona Biglietto</h2>
+      <button class="btn-chiudi-overlay" onclick="chiudiScanner()">Chiudi</button>
+    </div>
+    <div id="qr-reader"></div>
+    <div id="scan-result-msg"></div>
+  </div>
+
+
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script>
+
+    var ultimoCodiceLetto = null;
+    
+    // Usiamo l'API nativa del browser se disponibile, altrimenti carichiamo la libreria
+    async function scanImage(imageFile) {
+      const loading = document.getElementById('loading');
+      const inputTesto = document.getElementById('qrcodeInput');
+      loading.style.display = 'block';
+
+      try {
+        const html5QrCode = new Html5Qrcode("qr-reader");
+        
+        // Configurazione ottimizzata: 
+        // l'opzione 'showImage' aiuta la libreria a scalare correttamente l'immagine
+        const decodedText = await html5QrCode.scanFile(imageFile, false);
+        
+        // Se arriva qui, ha trovato il codice!
+        loading.style.display = 'none';
+        inputTesto.value = decodedText;
+        
+        // Feedback sonoro/visivo opzionale
+        console.log("Successo:", decodedText);
+        
+        // Procedi con la verifica
+        handleSubmit(document.getElementById('myForm'));
+
+      } catch (err) {
+        loading.style.display = 'none';
+        console.warn("Errore scansione dettagliato:", err);
+        
+        // Messaggio più utile all'utente
+        alert("QR non rilevato. Consigli:\n1. Avvicinati di più\n2. Aspetta che la fotocamera metta a fuoco\n3. Evita riflessi di luce sul codice");
+      }
+    }
+
+
+    function elaboraSuccesso(codice) {
+      console.log("QR Decodificato:", codice);
+      document.getElementById('qrcodeInput').value = codice;
+      // Avvia la funzione di verifica di Google Script
+      handleSubmit(document.getElementById('myForm'));
+    }
+
+    // Listener per l'input file
+    document.getElementById('qr-input-file').addEventListener('change', e => {
+      if (e.target.files.length > 0) {
+        scanImage(e.target.files[0]);
+      }
+    });
+
+
+    // ==========================================
+    // CALLBACK — QR LETTO
+    // ==========================================
+    function onQRCodeScansionato(codice) {
+      if (codice === ultimoCodiceLetto) return; // evita doppie letture
+      ultimoCodiceLetto = codice;
+
+      // Mostra feedback visivo nell'overlay
+      const msg = document.getElementById('scan-result-msg');
+      msg.textContent    = '✓ ' + codice;
+      msg.style.display  = 'block';
+
+      // Dopo 800ms chiudi overlay e avvia verifica
+      setTimeout(() => {
+        chiudiScanner();
+        document.getElementById('qrcodeInput').value = codice;
+        handleSubmit(document.getElementById('myForm'));
+      }, 800);
+    }
+
+
+    // ==========================================
+    // CHIUDI SCANNER
+    // ==========================================
+    function chiudiScanner() {
+      try { scanner.clear(); } catch(e) {}
+      scanner = null;
+      document.getElementById('scanner-overlay').classList.remove('attivo');
+    }
+
+
+    // ==========================================
+    // FORM SUBMIT — verifica biglietto
+    // ==========================================
+    function handleSubmit(form) {
+      const codice = form.qrcode.value.trim();
+      if (!codice) return;
+
+      document.getElementById('loading').style.display   = 'block';
+      document.getElementById('risultato').style.display = 'none';
+      form.qrcode.readOnly = true;
+      document.getElementById('btn-verifica').style.display = 'none';
+
+      google.script.run
+        .withSuccessHandler(mostraRisultato)
+        .withFailureHandler(mostraRisultato)
+        .verificaEAggiorna(codice);
+    }
+
+
+    // ==========================================
+    // MOSTRA RISULTATO
+    // ==========================================
+    function mostraRisultato(risposta) {
+      document.getElementById('loading').style.display = 'none';
+      const div = document.getElementById('risultato');
+
+      const stili = {
+        OK     : { sfondo: "#d4edda", colore: "#155724", bordo: "#28a745" },
+        WARNING: { sfondo: "#fff3cd", colore: "#856404", bordo: "#ffc107" },
+        KO     : { sfondo: "#f8d7da", colore: "#721c24", bordo: "#dc3545" },
+      };
+      const stile = stili[risposta.esito] || stili.KO;
+
+      div.style.background = stile.sfondo;
+      div.style.color      = stile.colore;
+      div.style.border     = `2px solid ${stile.bordo}`;
+
+      let contenuto = `<p style="font-size:22px; font-weight:bold;">${risposta.messaggio}</p>`;
+
+      if (risposta.dati) {
+        contenuto += `
+          <table style="width:100%; font-size:14px; margin-top:10px; border-collapse:collapse;">
+            <tr><td style="padding:4px; color:#888;">Nominativo</td>   <td style="padding:4px;"><strong>${risposta.dati.name}</strong></td></tr>
+            <tr><td style="padding:4px; color:#888;">N. Ingressi</td>  <td style="padding:4px;"><strong>${Number(risposta.dati.adulti) + Number(risposta.dati.bambini)}</strong></td></tr>
+            <tr><td style="padding:4px; color:#888;">N. Menu #1</td>   <td style="padding:4px;"><strong>${risposta.dati.menu1}</strong></td></tr>
+            <tr><td style="padding:4px; color:#888;">N. Menu #2</td>   <td style="padding:4px;"><strong>${risposta.dati.menu2}</strong></td></tr>
+            <tr><td style="padding:4px; color:#888;">Birre Extra</td>  <td style="padding:4px;"><strong>${risposta.dati.birreExtra}</strong></td></tr>
+            <tr><td style="padding:4px; color:#888;">Token giochi</td> <td style="padding:4px;"><strong>${risposta.dati.tokensGiochi}</strong></td></tr>
+          </table>
+        `;
+      }
+
+      contenuto += `
+        <div style="text-align:center; margin-top:12px;">
+          <button class="scan-btn" onclick="chiudiRisultato()">CHIUDI</button>
+          <button class="scan-btn" onclick="openBarcodeScanner()">RESCAN</button>
+        </div>
+      `;
+
+      div.innerHTML     = contenuto;
+      div.style.display = 'block';
+    }
+
+
+    // ==========================================
+    // CHIUDI RISULTATO — reset per nuova scansione
+    // ==========================================
+    function chiudiRisultato() {
+      const div  = document.getElementById('risultato');
+      const form = document.getElementById('myForm');
+
+      div.style.display    = 'none';
+      div.innerHTML        = '';
+      form.qrcode.value    = '';
+      form.qrcode.readOnly = false;
+      ultimoCodiceLetto    = null;
+      document.getElementById('btn-verifica').style.display = 'block';
+    }
+
+  </script>
+</body>
+</html>
