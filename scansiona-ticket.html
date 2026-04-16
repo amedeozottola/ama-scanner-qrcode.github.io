@@ -3,7 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- METATAG per iOS -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Scanner QR - AMA">
+  
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+
   <title>Scanner QR - AMA</title>
+  <script>
+        if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('Service Worker registrato!', reg))
+            .catch(err => console.error('Errore registrazione SW', err));
+        });
+        }
+  </script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -22,6 +38,16 @@
       border-radius: 12px;
       overflow: hidden;
       box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+
+    /* Forza il video creato dalla libreria a restare nel flusso della pagina su iOS */
+    #reader video {
+        width: 100% !important;
+        height: auto !important;
+        object-fit: cover;
+        /* Proprietà critiche per Safari */
+        -webkit-playsinline: true;
+        playsinline: true;
     }
 
     #btn-scan {
@@ -103,12 +129,13 @@
       document.getElementById('btn-scan').disabled  = true;
       document.getElementById('btn-scan').innerText = "⏳ Avvio fotocamera...";
       document.getElementById('risultato').style.display = 'none';
+      ultimoCodiceLetto = null;
 
       scanner = new Html5Qrcode("reader");
 
       scanner.start(
         { facingMode: "environment" },
-        { fps: 10, qrbox: 250 },
+        { fps: 10, qrbox: 300 },
         onQRCodeScansionato,
         (errore) => { /* errori silenziosi durante la ricerca */ }
       ).then(() => {
@@ -139,6 +166,7 @@
       // 3. Chiama la verifica — cambia in base a come chiami la funzione:
       fetch(APPS_SCRIPT_URL, {
         method : "POST",
+        mode: 'no-cors',
         headers: { "Content-Type": "text/plain" },
         body   : JSON.stringify({
           action  : "verificaEAggiorna",
