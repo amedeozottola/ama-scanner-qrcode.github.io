@@ -103,19 +103,23 @@
   <h1>Le Mille e Una Notte 2026</h1>
   <h2>Verifica Biglietto</h2>
 
-  <input type="file" id="qr-input-file" accept="image/*" capture="environment" style="display:none;">
-
-  <button type="button" class="submit-btn" onclick="document.getElementById('qr-input-file').click()">
-    SCATTA FOTO E VERIFICA
-  </button>
-  
-  <div id="qr-reader" style="display:none;"></div>
-  <div id="loading" style="display:none;">⏳ Lettura in corso...</div>
+  <div id="loading">⏳ Verifica in corso...</div>
   <div id="risultato"></div>
-  
+
   <form id="myForm" onsubmit="event.preventDefault();">
-      <input type="hidden" id="qrcodeInput" name="qrcode">
+    <label><strong>Codice Biglietto</strong></label>
+    <div style="display:flex; gap:8px; align-items:flex-end;">
+      <input type="text" id="qrcodeInput" name="qrcode"
+             placeholder="Scan o digita il codice"
+             onkeydown="if(event.key==='Enter'){ event.preventDefault(); handleSubmit(document.getElementById('myForm')); }"
+             style="flex:1;">
+    </div>
+    <button type="button" class="submit-btn" id="btn-verifica"
+            onclick="openBarcodeScanner()">
+      VERIFICA BIGLIETTO
+    </button>
   </form>
+
 
   <!-- ===================== -->
   <!-- OVERLAY SCANNER       -->
@@ -134,53 +138,28 @@
   <script>
 
     var ultimoCodiceLetto = null;
-    
-    // Usiamo l'API nativa del browser se disponibile, altrimenti carichiamo la libreria
-    async function scanImage(imageFile) {
-      const loading = document.getElementById('loading');
-      const inputTesto = document.getElementById('qrcodeInput');
-      loading.style.display = 'block';
+    var scanner           = null;
 
-      try {
-        const html5QrCode = new Html5Qrcode("qr-reader");
-        
-        // Configurazione ottimizzata: 
-        // l'opzione 'showImage' aiuta la libreria a scalare correttamente l'immagine
-        const decodedText = await html5QrCode.scanFile(imageFile, false);
-        
-        // Se arriva qui, ha trovato il codice!
-        loading.style.display = 'none';
-        inputTesto.value = decodedText;
-        
-        // Feedback sonoro/visivo opzionale
-        console.log("Successo:", decodedText);
-        
-        // Procedi con la verifica
-        handleSubmit(document.getElementById('myForm'));
+    // ==========================================
+    // APRI SCANNER — overlay inline (iOS safe)
+    // ==========================================
+    function openBarcodeScanner() {
+      ultimoCodiceLetto = null;
+      document.getElementById('scanner-overlay').classList.add('attivo');
+      document.getElementById('scan-result-msg').style.display = 'none';
+      document.getElementById('qr-reader').innerHTML = '';
 
-      } catch (err) {
-        loading.style.display = 'none';
-        console.warn("Errore scansione dettagliato:", err);
-        
-        // Messaggio più utile all'utente
-        alert("QR non rilevato. Consigli:\n1. Avvicinati di più\n2. Aspetta che la fotocamera metta a fuoco\n3. Evita riflessi di luce sul codice");
-      }
+      scanner = new Html5QrcodeScanner("qr-reader", {
+        fps                  : 15,
+        qrbox                : { width: 300, height: 300 },
+        rememberLastUsedCamera: true,
+        videoConstraints     : { facingMode: "environment" },
+        supportedScanTypes   : [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
+        formatsToSupport     : [Html5QrcodeSupportedFormats.QR_CODE]
+      }, false);
+
+      scanner.render(onQRCodeScansionato, () => {});
     }
-
-
-    function elaboraSuccesso(codice) {
-      console.log("QR Decodificato:", codice);
-      document.getElementById('qrcodeInput').value = codice;
-      // Avvia la funzione di verifica di Google Script
-      handleSubmit(document.getElementById('myForm'));
-    }
-
-    // Listener per l'input file
-    document.getElementById('qr-input-file').addEventListener('change', e => {
-      if (e.target.files.length > 0) {
-        scanImage(e.target.files[0]);
-      }
-    });
 
 
     // ==========================================
