@@ -136,7 +136,28 @@
 
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script>
+      const APPS_SCRIPT_URL     = "https://script.google.com/macros/s/AKfycbxeCq0hGErVLtbDYRjOI5Xg0UNYtm8PqntElBJLLO4/exec";
+      const APPS_SCRIPT_URL_DEV = "https://script.google.com/macros/s/AKfycbxeCq0hGErVLtbDYRjOI5Xg0UNYtm8PqntElBJLLO4/dev";
 
+      // Chiama verificaEAggiorna
+      async function verificaCodice(codiceQR) {
+        const res = await fetch(URL, {
+          method : "POST",
+          headers: { "Content-Type": "text/plain" },
+          body   : JSON.stringify({
+            action  : "verificaEAggiorna",  // ← specifica quale funzione
+            codiceQR: codiceQR
+          })
+        });
+        return await res.json();
+      }
+  </script>
+  
+  
+  
+  
+  
+  <script>
     var ultimoCodiceLetto = null;
     var scanner           = null;
 

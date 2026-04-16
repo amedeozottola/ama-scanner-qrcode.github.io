@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scanner QR - AMA</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+
+    h1 { color: #333; font-size: 20px; }
+
+    #reader {
+      width: 300px;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+
+    #btn-scan {
+      margin-top: 20px;
+      padding: 12px 40px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    #btn-scan:disabled {
+      background: #aaa;
+      cursor: not-allowed;
+    }
+
+    #loading {
+      display: none;
+      margin-top: 20px;
+      color: #888;
+      font-size: 14px;
+    }
+
+    #risultato {
+      display: none;
+      margin-top: 20px;
+      padding: 20px;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 400px;
+      box-sizing: border-box;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>&#127915; Scanner Biglietti AMA</h1>
+
+  <!-- Lettore QR — visibile solo durante la scansione -->
+  <div id="reader"></div>
+
+  <!-- Pulsante per avviare la cam -->
+  <button id="btn-scan" onclick="avviaScanner()">
+    &#128247; Scansiona Biglietto
+  </button>
+
+  <div id="loading">&#9203; Verifica in corso...</div>
+  <div id="risultato"></div>
+
+  <script src="https://unpkg.com/html5-qrcode"></script>
+
+  <script>
+    let scanner          = null;
+    let ultimoCodiceLetto = null;
+
+    // =====================
+    // AVVIA SCANNER
+    // =====================
+    function avviaScanner() {
+      document.getElementById('btn-scan').disabled  = true;
+      document.getElementById('btn-scan').innerText = "⏳ Avvio fotocamera...";
+      document.getElementById('risultato').style.display = 'none';
+
+      scanner = new Html5Qrcode("reader");
+
+      scanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 250 },
+        onQRCodeScansionato,
+        (errore) => { /* errori silenziosi durante la ricerca */ }
+      ).then(() => {
+        document.getElementById('btn-scan').innerText = "📷 Fotocamera attiva...";
+      }).catch((err) => {
+        document.getElementById('btn-scan').disabled  = false;
+        document.getElementById('btn-scan').innerText = "📷 Scansiona Biglietto";
+        alert("Errore fotocamera: " + err);
+      });
+    }
+
+
+    // =====================
+    // CALLBACK — QR LETTO
+    // =====================
+    function onQRCodeScansionato(codiceDecodificato) {
+      const APPS_SCRIPT_URL     = "https://script.google.com/macros/s/AKfycbxeCq0hGErVLtbDYRjOI5Xg0UNYtm8PqntElBJLLO4/exec";
+      const APPS_SCRIPT_URL_DEV = "https://script.google.com/macros/s/AKfycbxeCq0hGErVLtbDYRjOI5Xg0UNYtm8PqntElBJLLO4/dev";
+
+      // Evita doppia lettura
+      if (codiceDecodificato === ultimoCodiceLetto) return;
+      ultimoCodiceLetto = codiceDecodificato;
+
+      // 1. Ferma e chiudi la fotocamera
+      fermaScanner();
+
+      // 2. Mostra loading
+      document.getElementById('loading').style.display = 'block';
+
+      // 3. Chiama la verifica — cambia in base a come chiami la funzione:
+      fetch(APPS_SCRIPT_URL_DEV, {
+        method : "POST",
+        headers: { "Content-Type": "text/plain" },
+        body   : JSON.stringify({
+          action  : "verificaEAggiorna",
+          codiceQR: codiceDecodificato
+        })
+      })
+      .then(res => res.json())
+      .then(mostraRisultato)
+      .catch(mostraErrore);
+    }
+
+
+    // =====================
+    // FERMA SCANNER
+    // =====================
+    function fermaScanner() {
+      if (scanner) {
+        scanner.stop().then(() => {
+          scanner.clear();
+          scanner = null;
+          document.getElementById('reader').innerHTML   = '';
+          document.getElementById('btn-scan').disabled  = false;
+          document.getElementById('btn-scan').innerText = "📷 Scansiona un altro biglietto";
+        }).catch(err => console.error("Errore stop scanner:", err));
+      }
+    }
+
+
+    // =====================
+    // MOSTRA RISULTATO
+    // =====================
+    function mostraRisultato(risposta) {
+      document.getElementById('loading').style.display = 'none';
+
+      const stili = {
+        OK     : { sfondo: "#d4edda", colore: "#155724", bordo: "#28a745" },
+        WARNING: { sfondo: "#fff3cd", colore: "#856404", bordo: "#ffc107" },
+        KO     : { sfondo: "#f8d7da", colore: "#721c24", bordo: "#dc3545" },
+      };
+      const stile = stili[risposta.esito] || stili.KO;
+
+      const div        = document.getElementById('risultato');
+      div.style.background = stile.sfondo;
+      div.style.color      = stile.colore;
+      div.style.border     = `2px solid ${stile.bordo}`;
+
+      let contenuto = `<p style="font-size:20px; font-weight:bold; text-align:center;">
+                         ${risposta.messaggio}
+                       </p>`;
+
+      if (risposta.dati) {
+        contenuto += `
+          <table style="width:100%; font-size:14px; margin-top:10px; border-collapse:collapse;">
+            <tr><td style="padding:4px; color:#888;">Nominativo</td>  <td style="padding:4px;"><strong>${risposta.dati.name}</strong></td></tr>
+            <tr><td style="padding:4px; color:#888;">N. Ingressi</td> <td style="padding:4px;"><strong>${Number(risposta.dati.adulti) + Number(risposta.dati.bambini)}</strong></td></tr>
+            <tr><td style="padding:4px; color:#888;">Menù #1</td>     <td style="padding:4px;"><strong>${risposta.dati.menu1}</strong></td></tr>
+            <tr><td style="padding:4px; color:#888;">Menù #2</td>     <td style="padding:4px;"><strong>${risposta.dati.menu2}</strong></td></tr>
+            <tr><td style="padding:4px; color:#888;">Birre Extra</td> <td style="padding:4px;"><strong>${risposta.dati.birreExtra}</strong></td></tr>
+          </table>
+        `;
+      }
+
+      contenuto += `
+        <div style="text-align:center; margin-top:16px;">
+          <button
+            onclick="chiudiRisultato()"
+            style="
+              width: 80%;
+              padding: 12px;
+              background: rgba(0,0,0,0.15);
+              color: inherit;
+              border: none;
+              border-radius: 8px;
+              font-size: 15px;
+              font-weight: bold;
+              cursor: pointer;
+            ">
+            OK, chiudi
+          </button>
+        </div>
+      `;
+
+      div.innerHTML     = contenuto;
+      div.style.display = 'block';
+    }
+
+
+    // =====================
+    // MOSTRA ERRORE
+    // =====================
+    function mostraErrore(errore) {
+      document.getElementById('loading').style.display = 'none';
+      mostraRisultato({
+        esito    : "KO",
+        messaggio: "❌ Errore di comunicazione",
+        dati     : null
+      });
+      console.error(errore);
+    }
+
+
+    // =====================
+    // CHIUDI RISULTATO
+    // =====================
+    function chiudiRisultato() {
+      document.getElementById('risultato').style.display = 'none';
+      ultimoCodiceLetto = null;
+    }
+
+  </script>
+</body>
+</html>
