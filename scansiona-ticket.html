@@ -125,8 +125,7 @@
     // CALLBACK — QR LETTO
     // =====================
     function onQRCodeScansionato(codiceDecodificato) {
-      const APPS_SCRIPT_URL     = "https://script.google.com/macros/s/AKfycbxeCq0hGErVLtbDYRjOI5Xg0UNYtm8PqntElBJLLO4/exec";
-
+      const APPS_SCRIPT_URL     = "https://script.google.com/macros/s/AKfycbywhbbHNVrJIKJSH0RJ5sllwp-khgMkKK0zhP9_pMNWHMi__P_3SoTxPCpl0lVJ99gW/exec";
       // Evita doppia lettura
       if (codiceDecodificato === ultimoCodiceLetto) return;
       ultimoCodiceLetto = codiceDecodificato;
