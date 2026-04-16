@@ -9,9 +9,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Scanner QR - AMA">
   
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
   <link rel="manifest" href="./manifest.json">
-  
+
   <title>Scanner QR - AMA</title>
   <script>
         if ('serviceWorker' in navigator) {
@@ -168,7 +168,6 @@
       // 3. Chiama la verifica — cambia in base a come chiami la funzione:
       fetch(APPS_SCRIPT_URL, {
         method : "POST",
-        mode: 'no-cors',
         headers: { "Content-Type": "text/plain" },
         body   : JSON.stringify({
           action  : "verificaEAggiorna",
@@ -268,6 +267,7 @@
         messaggio: "❌ Errore di comunicazione",
         dati     : null
       });
+      alert(errore);
       console.error(errore);
     }
 
