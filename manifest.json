@@ -1,8 +1,8 @@
 {
     "name": "Le Mille e Una Notte 2026",
-    "short_name": "LMUEN 2026",
+    "short_name": "Festa AMA 2026",
     "description": "Verifica biglietti ingresso",
-    "start_url": "./scansiona-ticket.html",
+    "start_url": "./index.html",
     "scope": "./",
     "display": "standalone",
     "orientation": "portrait",

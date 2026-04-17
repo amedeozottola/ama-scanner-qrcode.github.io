@@ -6,6 +6,7 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME).then((cache) => {
       // Inserisci qui solo i file INDISPENSABILI (es. la tua index e il css principale)
       return cache.addAll([
+        './index.html',
         './scansiona-ticket.html'
       ]);
     })

@@ -17,7 +17,7 @@
   <script>
         if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/ama-scanner-qrcode.github.io/sw.js')
+            navigator.serviceWorker.register('./sw.js')
             .then(reg => console.log('AMA - Service Worker registrato!', reg))
             .catch(err => console.error('Errore registrazione AMA - SW', err));
         });
