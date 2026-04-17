@@ -27,7 +27,7 @@
     body {
       margin: 0;
       font-family: system-ui, sans-serif;
-      background: radial-gradient(circle at top, #1a1a2e, #0f0f1a);
+      background: radial-gradient(circle at top, #06061e, #16164e);
       color: white;
       display: flex;
       flex-direction: column;
@@ -51,11 +51,17 @@
     
     /* SCANNER */
     #reader {
-      width: 280px;
+      width: 300px;
       margin: auto;
       border-radius: 16px;
       overflow: hidden;
       box-shadow: 0 0 25px rgba(59,130,246,0.5);
+    }
+
+    #reader video {
+      width: 100% !important;
+      height: auto !important;
+      object-fit: cover; /* Mantiene il video centrato e senza bordi neri */
     }
     
     /* RESULT FULLSCREEN */
@@ -113,6 +119,11 @@
       cursor: pointer;
     }
     
+    .btn-fondo {
+      margin-top: auto; /* occupa tutto lo spazio rimanente sopra */
+      flex-shrink: 0;
+    }
+
     .primary {
       background: #3b82f6;
       color: white;
@@ -145,8 +156,8 @@
     
     <div id="reader"></div>
     
-    <button class="primary" id="b-start-scan" onclick="avviaScannerMock()">Verifica Biglietto</button>
-    <button class="primary" id="b-stop-scan" onclick="fermaScanner()" style="display:none;">Chiudi</button>
+    <button class="primary btn-fondo" id="b-start-scan" onclick="avviaScanner()">Verifica Biglietto</button>
+    <button class="primary btn-fondo" id="b-stop-scan" onclick="fermaScanner()" style="display:none;">Chiudi</button>
     
     <div id="risultato"></div>
     
@@ -188,6 +199,14 @@
         onQRCodeScansionato,
         (errore) => { /* errori silenziosi durante la ricerca */ }
       ).then(() => {
+        const video = document.querySelector("#reader video");
+        if (video) {
+          video.setAttribute("playsinline", "true");
+          video.setAttribute("webkit-playsinline", "true");
+          // Opzionale: assicura il muto per forzare l'autoplay se necessario
+          video.muted = true; 
+          video.play();
+        }
         document.getElementById('b-start-scan').innerText = "📷 Fotocamera attiva...";
         document.getElementById('b-start-scan').style.display = 'none';
         document.getElementById('b-stop-scan').style.display = 'block';
@@ -277,7 +296,7 @@
       contenuto += `
           <div style="margin-top:20px;">
             <button class="secondary" onclick="chiudiRisultato()">Chiudi</button>
-            <button class="secondary" onclick="avviaScannerMock()">Verifica Biglietto</button>
+            <button class="secondary" onclick="avviaScanner()">Verifica Biglietto</button>
           </div>
         </div>
       `;
